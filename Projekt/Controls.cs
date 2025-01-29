@@ -13,16 +13,20 @@ namespace Projekt
             None = 0,
             Start,
             Main,
-            UserSettings
+            UserSettings,
+            Diaries,
+            Entries
         }
         public enum Options
         {
             Cancel = 0,
             Continue
         }
-        static HashSet<byte> startOptions = new HashSet<byte> { 1, 2, 3 };
-        static HashSet<byte> menuOptions = new HashSet<byte> { 1, 2, 3, 4, 5 };
-        static HashSet<byte> userSettingsOptions = new HashSet<byte> { 1, 2, 3, 4 };
+        static readonly HashSet<byte> startOptions = [1, 2, 3];
+        static readonly HashSet<byte> menuOptions = [1, 2, 3, 4, 5];
+        static readonly HashSet<byte> userSettingsOptions = [1, 2, 3, 4];
+        static readonly HashSet<byte> diariesOptions = [1, 2, 3, 4];
+        static readonly HashSet<byte> entriesOptions = [1, 2, 3, 4, 5];
         // Menu Start
         public static Menu StartMenu() {
             while (true)
@@ -73,6 +77,47 @@ namespace Projekt
 
                 switch (option)
                 {
+                    // Wybór dziennika
+                    case 1:
+                        {
+                            Options opt;
+                            Diary.ChooseDiary(User.user, out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Diaries;
+                            else break;
+                        }
+                    // Szukanie innych użytkowników
+                    case 2:
+                        {
+                            while (true)
+                            {
+                                Options opt;
+                                UserDiary.ChooseUser(out opt);
+                                if (opt == Options.Continue)
+                                {
+                                    while (opt == Options.Continue)
+                                    {
+                                        Options opt1;
+                                        Diary.ChoosePublicDiary(UserDiary.chosenUser, out opt1);
+                                        if (opt1 == Options.Continue)
+                                        {
+                                            while (opt1 == Options.Continue)
+                                            {
+                                                Options opt2;
+                                                Entry.ChoosePublicEntry(Diary.chosenDiary, out opt2);
+                                                if (opt2 == Options.Cancel)
+                                                    opt1 = Options.Cancel;
+                                                else
+                                                    Entry.ReadEntry();
+                                            }
+                                        }
+                                        else opt = Options.Cancel;
+                                    }
+                                }
+                                else break;
+                            }
+                            break;
+                        }
                     // Zarządzanie kontem
                     case 3:
                         {
@@ -103,7 +148,7 @@ namespace Projekt
                 Console.WriteLine("1. Zmień nazwę");
                 Console.WriteLine("2. Zmień hasło");
                 Console.WriteLine("3. Usuń konto");
-                Console.WriteLine("4. Wyjście");
+                Console.WriteLine("4. Cofnij");
                 byte option = MenuOptionIsValid(userSettingsOptions);
 
                 switch (option)
@@ -126,6 +171,7 @@ namespace Projekt
                                 return Menu.Start;
                             else break;
                         }
+                    // Usuwanie konta użytkownika
                     case 3:
                         {
                             Options opt;
@@ -134,11 +180,117 @@ namespace Projekt
                                 return Menu.Start;
                             else break;
                         }
-                    // Zakończenie programu
+                    // Cofnięcie do poprzedniego menu
                     case 4:
                         {
-                            ExitProgram(User.user);
-                            return Menu.None;
+                            Console.Clear();
+                            return Menu.Main;
+                        }
+                }
+            }
+        }
+        // Menu dziennika
+        public static Menu Diaries()
+        {
+            while (true)
+            {
+                Console.WriteLine("Wybrany dziennik: " + Diary.chosenDiary.Name);
+                Console.WriteLine("Menu:");
+                Console.WriteLine("1. Wybierz wpis");
+                Console.WriteLine("2. Zmień nazwę");
+                Console.WriteLine("3. Usuń dziennik");
+                Console.WriteLine("4. Cofnij");
+                byte option = MenuOptionIsValid(diariesOptions);
+
+                switch (option)
+                {
+                    // Wybór wpisu
+                    case 1:
+                        {
+                            Options opt;
+                            Entry.ChooseEntry(Diary.chosenDiary, out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Entries;
+                            else break;
+                        }
+                    // Zmiana nazwy dziennika
+                    case 2:
+                        {
+                            Options opt;
+                            Diary.ChangeDiaryName(out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Main;
+                            else break;
+                        }
+                    // Usunięcie dziennika
+                    case 3:
+                        {
+                            Options opt;
+                            Diary.DeleteDiary(Diary.chosenDiary, out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Main;
+                            else break;
+                        }
+                    // Cofnięcie do poprzedniego menu
+                    case 4:
+                        {
+                            Console.Clear();
+                            return Menu.Main;
+                        }
+                }
+            }
+        }
+        // Menu dziennika
+        public static Menu Entries()
+        {
+            while (true)
+            {
+                Console.WriteLine("Wybrany wpis: " + Entry.chosenEntry.Title);
+                Console.WriteLine("Menu:");
+                Console.WriteLine("1. Przeczytaj");
+                Console.WriteLine("2. Zmień tytuł");
+                Console.WriteLine("3. Edytuj tekst");
+                Console.WriteLine("4. Usuń wpis");
+                Console.WriteLine("5. Cofnij");
+                byte option = MenuOptionIsValid(entriesOptions);
+
+                switch (option)
+                {
+                    // Wyświetlenie tekstu wpisu
+                    case 1:
+                        {
+                            Entry.ReadEntry();
+                            break;
+                        }
+                    // Zmiana tytułu wpisu
+                    case 2:
+                        {
+                            Options opt;
+                            Entry.ChangeEntryTitle(out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Diaries;
+                            else break;
+                        }
+                    // Edycja zawartości
+                    case 3:
+                        {
+                            Entry.EditEntryContent(Entry.chosenEntry);
+                            return Menu.Diaries;
+                        }
+                    // Usunięcie wpisu
+                    case 4:
+                        {
+                            Options opt;
+                            Entry.DeleteEntry(Entry.chosenEntry, out opt);
+                            if (opt == Options.Continue)
+                                return Menu.Diaries;
+                            else break;
+                        }
+                    // Cofnięcie do poprzedniego menu
+                    case 5:
+                        {
+                            Console.Clear();
+                            return Menu.Diaries;
                         }
                 }
             }

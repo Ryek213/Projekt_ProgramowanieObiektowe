@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.Design;
 using System.Globalization;
 using System.Reflection.Metadata.Ecma335;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 
 namespace Projekt
@@ -8,15 +9,12 @@ namespace Projekt
     internal class User
     {
         public static string? user;
-        const string loginFile = "login.json";
         readonly static char[] allowedUsernameCharacters = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
         
         // Logowanie
         public static void SignIn()
         {
             Console.Clear();
-            // Wczytanie pliku z danymi logowania
-            JArray loginJson = LoadLoginFile();
 
             // Podanie nazwy użytkownika
             string username;
@@ -27,7 +25,7 @@ namespace Projekt
                 username = Console.ReadLine();
 
                 // Sprawdzenie, czy użytkownik o takiej nazwie już istnieje
-                if (!UserExists(username, loginJson))
+                if (!UserExists(username))
                 {
                     Console.Clear();
                     Console.WriteLine("Użytkownik o takiej nazwie nie istnieje");
@@ -44,7 +42,7 @@ namespace Projekt
                 Console.Write("> ");
                 password = Console.ReadLine();
 
-                if (!IsPasswordCorrect(username, password, loginJson))
+                if (!IsPasswordCorrect(username, password))
                 {
                     Console.Clear();
                     Console.WriteLine("Podano niepoprawne hasło");
@@ -61,8 +59,6 @@ namespace Projekt
         public static void SignUp()
         {
             Console.Clear();
-            // Wczytanie pliku z danymi logowania
-            JArray loginJson = LoadLoginFile();
 
             // Ustawianie nazwy użytkownika
             string username;
@@ -75,7 +71,7 @@ namespace Projekt
                 }
 
                 // Sprawdzenie, czy użytkownik o takiej nazwie już istnieje
-                if (UserExists(username, loginJson))
+                if (UserExists(username))
                 {
                     Console.Clear();
                     Console.WriteLine("Użytkownik o takiej nazwie już istnieje");
@@ -93,8 +89,20 @@ namespace Projekt
             }
 
             // Dodanie użytkownika do danych
-            loginJson.Add(new JObject { { "Username", username }, { "Password", password } });
-            File.WriteAllText(loginFile, loginJson.ToString());
+            try
+            {
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("INSERT INTO Users (Username, Password) VALUES (@username, @password)", Program.conn);
+                command.Parameters.AddWithValue("@username", username);
+                command.Parameters.AddWithValue("@password", password);
+                command.ExecuteNonQuery();
+                Program.conn.Close();
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
             Console.Clear();
         }
 
@@ -109,8 +117,6 @@ namespace Projekt
         public static void ChangeUsername(out Controls.Options option)
         {
             Console.Clear();
-            // Wczytanie pliku z danymi logowania
-            JArray loginJson = LoadLoginFile();
 
             // Ustawianie nowej nazwy użytkownika
             string username;
@@ -141,7 +147,7 @@ namespace Projekt
                 while (!SetUsername(out username));
 
                 // Sprawdzenie, czy użytkownik o takiej nazwie już istnieje
-                if (UserExists(username, loginJson))
+                if (UserExists(username))
                 {
                     Console.Clear();
                     Console.WriteLine("Użytkownik o takiej nazwie już istnieje");
@@ -167,7 +173,7 @@ namespace Projekt
                     option = Controls.Options.Cancel;
                     return;
                 }
-                if (!IsPasswordCorrect(user, password, loginJson))
+                if (!IsPasswordCorrect(user, password))
                 {
                     Console.Clear();
                     Console.WriteLine("Podano niepoprawne hasło");
@@ -177,8 +183,20 @@ namespace Projekt
             while (true);
 
             // Zapisanie nowej nazwy do danych
-            SearchUser(user, loginJson)["Username"] = username;
-            File.WriteAllText(loginFile, loginJson.ToString());
+            try
+            {
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("UPDATE Users SET Username = @username WHERE Username = @user", Program.conn);
+                command.Parameters.AddWithValue("@username", username);
+                command.Parameters.AddWithValue("@user", user);
+                command.ExecuteNonQuery();
+                Program.conn.Close();
+            }
+            catch (MySqlException e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
             user = null;
             option = Controls.Options.Continue;
             Console.Clear();
@@ -188,8 +206,6 @@ namespace Projekt
         public static void ChangePassword(out Controls.Options option)
         {
             Console.Clear();
-            // Wczytanie pliku z danymi logowania
-            JArray loginJson = LoadLoginFile();
 
             // Potwierdzenie zmiany starym hasłem
             while (true)
@@ -206,7 +222,7 @@ namespace Projekt
                     option = Controls.Options.Cancel;
                     return;
                 }
-                else if (!IsPasswordCorrect(user, oldPassword, loginJson))
+                else if (!IsPasswordCorrect(user, oldPassword))
                 {
                     Console.Clear();
                     Console.WriteLine("Podano niepoprawne hasło");
@@ -260,8 +276,19 @@ namespace Projekt
             }
 
             // Zapisanie nowego hasła do danych
-            SearchUser(user, loginJson)["Password"] = password;
-            File.WriteAllText(loginFile, loginJson.ToString());
+            try
+            {
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("UPDATE Users SET Password = @password WHERE Username = @user", Program.conn);
+                command.Parameters.AddWithValue("@password", password);
+                command.Parameters.AddWithValue("@user", user);
+                command.ExecuteNonQuery();
+                Program.conn.Close();
+            }
+            catch (MySqlException e)
+            {
+                Console.WriteLine(e.Message);
+            }
             user = null;
             option = Controls.Options.Continue;
             Console.Clear();
@@ -271,8 +298,6 @@ namespace Projekt
         public static void DeleteUser(out Controls.Options option)
         {
             Console.Clear();
-            // Wczytanie pliku z danymi logowania
-            JArray loginJson = LoadLoginFile();
 
             // Potwierdzenie usunięcia hasłem
             while (true)
@@ -289,7 +314,7 @@ namespace Projekt
                     option = Controls.Options.Cancel;
                     return;
                 }
-                else if (!IsPasswordCorrect(user, password, loginJson))
+                else if (!IsPasswordCorrect(user, password))
                 {
                     Console.Clear();
                     Console.WriteLine("Podano niepoprawne hasło");
@@ -322,33 +347,49 @@ namespace Projekt
             }
 
             // Usunięcie konta użytkownika z danych
-            SearchUser(user, loginJson).Remove();
-            File.WriteAllText(loginFile, loginJson.ToString());
+            try
+            {
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("DELETE FROM Users WHERE Username = @user", Program.conn);
+                command.Parameters.AddWithValue("@user", user);
+                command.ExecuteNonQuery();
+                Program.conn.Close();
+            }
+            catch (MySqlException e)
+            {
+                Console.WriteLine(e.Message);
+            }
             user = null;
             option = Controls.Options.Continue;
             Console.Clear();
         }
 
         // Sprawdzenie, czy użytkownik o takiej nazwie już istnieje
-        static bool UserExists(string username, JArray jsonArray)
+        static bool UserExists(string username)
         {
-            bool containsUser = false;
-            foreach (JToken token in jsonArray)
+            bool flag = false;
+            try
             {
-                containsUser = token["Username"].ToString() == username;
-                if (containsUser) break;
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("SELECT Username FROM Users", Program.conn);
+                using (var mr = command.ExecuteReader())
+                {
+                    while (mr.Read())
+                    {
+                        if (username.Equals(mr["Username"].ToString()))
+                        {
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+                Program.conn.Close();
             }
-            return containsUser;
-        }
-        
-        // Wyszukaj użytkownika
-        static JObject SearchUser(string username, JArray jsonArray)
-        {
-            foreach (JObject obj in jsonArray)
+            catch (MySqlException ex)
             {
-                if (obj["Username"].ToString() == username) return obj;
+                Console.WriteLine(ex.Message);
             }
-            return new JObject();
+            return flag;
         }
 
         // Ustawianie nazwy użytkownika
@@ -383,40 +424,32 @@ namespace Projekt
         }
 
         // Sprawdzenie, czy podane hasło zgadza się z hasłem dla danego użytkownika w danych logowania
-        private static bool IsPasswordCorrect(string username, string password, JArray jsonArray)
+        static bool IsPasswordCorrect(string username, string password)
         {
             bool isPasswordCorrect = false;
-            
-            foreach (JToken token in jsonArray)
+            try
             {
-                bool userFound = token["Username"].ToString() == username;
-                if (userFound)
+                Program.conn.Open();
+                MySqlCommand command = new MySqlCommand("SELECT * FROM Users", Program.conn);
+                using (var mr = command.ExecuteReader())
                 {
-                    isPasswordCorrect = token["Password"].ToString() == password;
-                    break;
+                    while (mr.Read())
+                    {
+                        bool userFound = username.Equals(mr["Username"].ToString());
+                        if (userFound)
+                        {
+                            isPasswordCorrect = password.Equals(mr["Password"].ToString());
+                            break;
+                        }
+                    }
                 }
+                Program.conn.Close();
+            }
+            catch (MySqlException ex)
+            {
+                Console.WriteLine(ex.Message);
             }
             return isPasswordCorrect;
-        }
-
-        // Wczytanie pliku z danymi logowania
-        static JArray LoadLoginFile()
-        {
-            JArray loginJson = new JArray();
-
-            if (!File.Exists(loginFile))
-            {
-                File.Create(loginFile).Close();
-            }
-            else
-            {
-                string loginCredentials = File.ReadAllText(loginFile);
-                if (loginCredentials != "")
-                {
-                    loginJson = JArray.Parse(loginCredentials);
-                }
-            }
-            return loginJson;
         }
     }
 }

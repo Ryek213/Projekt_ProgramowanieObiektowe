@@ -1,11 +1,14 @@
 ﻿using System.Data;
 using System.Linq;
 using System.Text.Json;
+using MySql.Data.MySqlClient;
 
 namespace Projekt
 {
     internal class Program
     {
+        const string connectionString = "server=localhost;database=mydb;uid=root;";
+        public static MySqlConnection conn = new MySqlConnection(connectionString);
         static void Main(string[] args)
         {
             Controls.Menu menu = Controls.Menu.Start;
@@ -32,7 +35,16 @@ namespace Projekt
                             menu = Controls.UserSettingsMenu();
                             break;
                         }
-
+                    case Controls.Menu.Diaries:
+                        {
+                            menu = Controls.Diaries();
+                            break;
+                        }
+                    case Controls.Menu.Entries:
+                        {
+                            menu = Controls.Entries();
+                            break;
+                        }
                 }
             }
         }
